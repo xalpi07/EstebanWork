@@ -1,0 +1,79 @@
+Ejercicios extra
+
+1. Cree un algoritmo que le pida 2 números al usuario, los guarde en dos variables distintas (`primero` y `segundo`) y los ordene de menor a mayor en dichas variables.
+
+1. Ejemplos:
+    1. A: 56, B: 32 → A: 32, B: 56
+    2. A: 24, B: 76 → A: 24, B: 76
+    3. A: 45, B: 12 → A: 12, B: 45
+1. Inicio
+2. Definir `primero`
+3. Definir `segundo`
+4. Mostar “Ingrese el primer número”
+5. Pedir `primero` 
+6. Mostar “Ingrese el segundo número”
+7. Pedir `segundo`
+8. Si ( `primero` > `segundo` ) entonces
+    1. Mostrar "El orden de los números es:", `segundo`, `primero`
+    
+    Sino
+    
+    1. Mostrar "El orden de los números es:", `primero`, `segundo`
+    
+    FinSi
+    
+9. FIn
+
+---
+
+1. Cree un algoritmo que le pida al usuario una velocidad en km/h y la convierta a m/s. Recuerda que `1 km == 1000m` y `1 hora == 60 minutos * 60 segundos`.
+    1. *Ejemplos*:
+        1. 73 → 20.27
+        2. 50 → 13.88
+        3. 120 → 33.33
+    
+    1. Inicio
+    2. Definir `velocidad_kmh`
+    3. Definir `velocidad_ms`
+    4. Mostrar "Ingrese la velocidad en km/h”
+    5. Pedir `velocidad_kmh`
+    6. `velocidad_ms` = `velocidad_kmh` * 1000 / (60 * 60)
+    7. Mostrar "La velocidad en m/s es:", `velocidad_ms`
+    8. Fin
+
+---
+
+1. Cree un algoritmo que le pregunte al usuario por el sexo de 6 personas, ingresando 1 si es mujer o 2 si es hombre, y muestre al final el porcentaje de mujeres y hombres.
+    1. *Ejemplos*:
+        1. 1, 1, 1, 2, 2, 2 → 50% mujeres y 50% hombres
+        2. 1, 1, 2, 2, 2, 2 → 33.3% mujeres y 66.6% hombres
+        3. 1, 1, 1, 1, 1, 2 → 84.4% mujeres y 16.6% hombres
+
+1. Incio
+2. Definir `contador` 
+3. Definir `mujeres`
+4. Definir `hombres`
+5. Definir `sexo`
+6. Definir `porcentaje_mujeres` 
+7. Definir `porcentaje_hombres`
+8. contador = 1
+9. mujeres = 0
+10. hombres = 0
+11. Mientras ( contador ≤ 6 ) hacer:
+    1. Mostrar "Ingrese el sexo de la persona", contador, " (1 para mujer, 2 para hombre)”
+    2. Pedir `sexo`
+    3. Si ( `sexo` = 1 ) entonces
+        1. `mujeres` = `mujeres` + 1
+    4. Sino si ( `sexo` = 2 ) entonces
+        1. `hombres` = `hombres` + 1
+    5. SIno 
+        1. Mostrar "Entrada inválida. Ingrese 1 para mujer o 2 para hombre.”
+        2. Continuar
+    6. FinSi
+    7. `contador` = `contador` + 1
+12. FinMientras
+13. `porcentaje_mujeres` = ( `mujeres` / 6 ) * 100
+14. `porcentaje_hombres`= ( `hombres` / 6 ) * 100
+15. Mostrar "El porcentaje de mujeres es:", `porcentaje_mujeres`, "%”
+16. Mostrar "El porcentaje de hombres es:", `porcentaje_hombres`, "%”
+17. Fin
