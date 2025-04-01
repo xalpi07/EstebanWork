@@ -1,0 +1,64 @@
+Rutina diaria
+
+1. Despertar
+    - Si es un día laboral:
+        - Levántarse a las 6:00 AM.
+    - Si es fin de semana:
+        - Levántarse a las 8:00 AM o más tarde si lo desea.
+2. Higiene personal
+    - Lavarse la cara y los dientes.
+    - Ducharse y vestirse con ropa limpia y cómoda.
+3. Desayuno
+    - Preparar desayuno:
+    - Si se tiene tiempo y los ingredientes
+        - Cocinar algo fresco como huevos o avena.
+    - Si no
+        - Tomar algo rápido como fruta o un batido
+4. Trabajo
+    - Si es un día laboral:
+        - Mientras se este en la jornada laboral
+            - Verificar lista de tareas.
+            - Mientras haya tareas pendientes:,
+                - Seleccionar una tarea de mayor prioridad.
+                - Realizar la tarea.
+                - Marcar la tarea como completada.
+            - Tomar descansos cada 2 horas.
+    - Si es fin de semana:
+        - Dedicar 2 horas a proyecto personal.
+5. Ejercicio
+    - Si está soleado, salir a caminar o correr al aire libre.
+    - Si está lloviendo, hacer ejercicio en casa o en el gimnasio.
+6. Almuerzo
+    - Si es fin de semana y tiene dinero
+        - Cocinar una receta especial o disfrutar de una comida fuera.
+    - Sino, Si hay tiempo y los ingredientes
+        - Preparar algo balanceado con proteínas, carbohidratos y vegetales.
+    - Si no
+        - Preparar algo sencillo, como un sandwich o una ensalada rápida.
+7. Tareas adicionales
+    - Si no hay trabajo pendiente y hay tareas del hogar pendientes
+        - Hacer lista de tareas pendientes: Por ejemplo ["limpiar", "organizar documentos", "hacer compras", "llamar a un amigo", etc].
+        - Mientras haya tareas pendientes:,
+            - Seleccionar una tarea de mayor prioridad.
+            - Realizar la tarea.
+            - Marcar la tarea como completada.
+8. Tiempo libre
+    - Si el trabajo terminado y se quiere hacer algun pasatiempo:
+        - Dedicar tiempo a pasatiempos.
+        -Si no, Si no hay pasatiempos específicos,
+        - Leer un libro, ver una película, ver una serie, etc.
+        -Si no
+        - Estudiar
+9. Cena
+    - Preparar una comida ligera.
+    - Evitar alimentos pesados o con mucha azúcar antes de dormir.
+10. Domir
+    - Vestirse con ropa cómoda para dormir.
+    - Ir al baño antes de acostarse.
+    - Lavarse los dientes.
+    - Ir a la cama a una hora razonable para asegurar 7-8 horas de sueño.
+    - Apagar todas las luces y dispositivos electrónicos.
+    - Si hay problemas para dormir,
+        - Leer un libro o escuchar música relajante.
+    - Dormir hasta la hora de despertar del día siguiente.
+11. Fin
