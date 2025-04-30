@@ -1,1 +1,0 @@
-print(access_restricted_area(user2))
