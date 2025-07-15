@@ -19,11 +19,15 @@ class FinanceManager:
         self.categories.append(category)
         return category
 
-    def add_transaction(self, title, amount, category_name, type_):
-        category = next((c for c in self.categories if c.name == category_name), None)
-        if not category:
+    def add_transaction(self, title, amount, category_name, type):
+        category = None
+        for c in self.categories:
+            if c.name == category_name:
+                category = c
+                break
+        if category == None:
             raise ValueError("Category not found")
-        transaction = Transaction(title, amount, category, type_)
+        transaction = Transaction(title, amount, category, type)
         self.transactions.append(transaction)
         return transaction
 

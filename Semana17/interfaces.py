@@ -1,6 +1,5 @@
 import PySimpleGUI as sg
-
-from logic import Category, Transaction
+from persistence import save_categories, save_transactions, load_categories, load_transactions
 
 def add_category_window():
     layout = [
@@ -15,15 +14,15 @@ def add_category_window():
         return values["CATEGORY_NAME"]
     return None
 
-def add_transaction_window(categories, type_):
+def add_transaction_window(categories, type):
     layout = [
-        [sg.Text(f"Add {type_.capitalize()}")],
+        [sg.Text(f"Add {type}")],
         [sg.Text("Title"), sg.Input(key="TITLE")],
         [sg.Text("Amount"), sg.Input(key="AMOUNT")],
         [sg.Text("Category"), sg.Combo([c.name for c in categories], key="CATEGORY")],
         [sg.Button("Save"), sg.Button("Cancel")]
     ]
-    window = sg.Window(f"Add {type_.capitalize()}", layout)
+    window = sg.Window(f"Add {type}", layout)
     event, values = window.read()
     window.close()
     if event == "Save":
@@ -31,23 +30,40 @@ def add_transaction_window(categories, type_):
             "title": values["TITLE"],
             "amount": values["AMOUNT"],
             "category": values["CATEGORY"],
-            "type": type_
+            "type": type
         }
     return None
 
-def main_window(transactions=[], categories=[], finance_manager=None):
+def main_window(finance_manager):
+    categories = load_categories()
+    for c in categories:
+        finance_manager.add_category(c.name)
+    transactions = load_transactions(finance_manager.get_categories())
+    for t in transactions:
+        finance_manager.add_transaction(t.title, t.amount, t.category.name, t.type)
+
     headings = ["Title", "Amount", "Category", "Type"]
     table_data = [
-        [t.title, t.amount, t.category.name, t.type] for t in transactions
+        [t.title, t.amount, t.category.name, t.type] for t in finance_manager.get_transactions()
     ]
 
     layout = [
-        [sg.Text("Finance Manager", font=("Arial", 16))],
-        [sg.Table(values=table_data, headings=headings, key="TABLE", auto_size_columns=True, justification="center", num_rows=10)],
+        [sg.Text("Finance Manager")],
+        [sg.Table(
+            values=table_data,
+            headings=headings,
+            key="TABLE",
+            auto_size_columns=False,
+            col_widths=[25, 10, 15, 10], 
+            justification="center",
+            num_rows=10,
+            expand_x=True,
+            expand_y=True
+        )],
         [sg.Button("Add Category"), sg.Button("Add Expense"), sg.Button("Add Income"), sg.Button("Exit")]
     ]
 
-    window = sg.Window("Finance Manager", layout)
+    window = sg.Window("Finance Manager", layout, resizable=True, size=(600, 400))
 
     while True:
         event, values = window.read()
@@ -57,47 +73,44 @@ def main_window(transactions=[], categories=[], finance_manager=None):
         if event == "Add Category":
             category_name = add_category_window()
             if category_name:
-                if finance_manager:
-                    finance_manager.add_category(category_name)
-                    categories = finance_manager.get_categories()
-                else:
-                    categories.append(Category(category_name))
+                finance_manager.add_category(category_name)
+                save_categories(finance_manager.get_categories())
                 sg.popup("Category added!")
-            # Actualizar la ventana principal si es necesario
 
         if event == "Add Expense":
-            if not categories:
+            categories = finance_manager.get_categories()
+            if categories == []:
                 sg.popup_error("No categories available. Please add a category first.")
                 continue
             data = add_transaction_window(categories, "expense")
             if data:
-                if finance_manager:
-                    finance_manager.add_transaction(data["title"], float(data["amount"]), data["category"], data["type"])
-                    transactions = finance_manager.get_transactions()
-                else:
-                    category_obj = next((c for c in categories if c.name == data["category"]), None)
-                    transactions.append(Transaction(data["title"], float(data["amount"]), category_obj, data["type"]))
+                try:
+                    amount = float(data["amount"])
+                except ValueError:
+                    sg.popup_error("Amount must be a number.")
+                    continue
+                finance_manager.add_transaction(data["title"], amount, data["category"], data["type"])            
+                save_transactions(finance_manager.get_transactions())
                 sg.popup("Expense added!")
-            # Actualizar la ventana principal si es necesario
 
         if event == "Add Income":
-            if not categories:
+            categories = finance_manager.get_categories()
+            if categories == []:
                 sg.popup_error("No categories available. Please add a category first.")
                 continue
             data = add_transaction_window(categories, "income")
             if data:
-                if finance_manager:
-                    finance_manager.add_transaction(data["title"], float(data["amount"]), data["category"], data["type"])
-                    transactions = finance_manager.get_transactions()
-                else:
-                    category_obj = next((c for c in categories if c.name == data["category"]), None)
-                    transactions.append(Transaction(data["title"], float(data["amount"]), category_obj, data["type"]))
+                try:
+                    amount = float(data["amount"])
+                except ValueError:
+                    sg.popup_error("Amount must be a number.")
+                    continue
+                finance_manager.add_transaction(data["title"], amount, data["category"], data["type"])
+                save_transactions(finance_manager.get_transactions())
                 sg.popup("Income added!")
-            # Actualizar la ventana principal si es necesario
 
-        # Actualizar la tabla después de cada cambio
         window["TABLE"].update(
-            [[t.title, t.amount, t.category.name, t.type] for t in transactions]
+            [[t.title, t.amount, t.category.name, t.type] for t in finance_manager.get_transactions()]
         )
 
     window.close()
