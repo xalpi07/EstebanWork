@@ -73,6 +73,10 @@ def main_window(finance_manager):
         if event == "Add Category":
             category_name = add_category_window()
             if category_name:
+                category_name = category_name.strip()
+                if not category_name:
+                    sg.popup_error("Category name cannot be empty or just spaces.")
+                    continue
                 finance_manager.add_category(category_name)
                 save_categories(finance_manager.get_categories())
                 sg.popup("Category added!")
@@ -84,12 +88,20 @@ def main_window(finance_manager):
                 continue
             data = add_transaction_window(categories, "expense")
             if data:
+                title = data["title"].strip()
+                category = data["category"].strip() if data["category"] else ""
                 try:
                     amount = float(data["amount"])
+                    if amount <= 0:
+                        sg.popup_error("Amount must be greater than zero.")
+                        continue
+                    if not title or not category:
+                        sg.popup_error("Title and category cannot be empty or just spaces.")
+                        continue
                 except ValueError:
                     sg.popup_error("Amount must be a number.")
                     continue
-                finance_manager.add_transaction(data["title"], amount, data["category"], data["type"])            
+                finance_manager.add_transaction(title, amount, category, data["type"])
                 save_transactions(finance_manager.get_transactions())
                 sg.popup("Expense added!")
 
@@ -100,12 +112,20 @@ def main_window(finance_manager):
                 continue
             data = add_transaction_window(categories, "income")
             if data:
+                title = data["title"].strip()
+                category = data["category"].strip() if data["category"] else ""
                 try:
                     amount = float(data["amount"])
+                    if amount <= 0:
+                        sg.popup_error("Amount must be greater than zero.")
+                        continue
+                    if not title or not category:
+                        sg.popup_error("Title and category cannot be empty or just spaces.")
+                        continue
                 except ValueError:
                     sg.popup_error("Amount must be a number.")
                     continue
-                finance_manager.add_transaction(data["title"], amount, data["category"], data["type"])
+                finance_manager.add_transaction(title, amount, category, data["type"])
                 save_transactions(finance_manager.get_transactions())
                 sg.popup("Income added!")
 
