@@ -15,6 +15,7 @@ USERS = {
     "admin": "password123"
 }
 
+
 def read_json(file_path, default):
     if not os.path.exists(file_path):
         return default
@@ -25,14 +26,14 @@ def write_json(file_path, data):
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
-def read_tasks():
-    return read_json(TASKS_FILE, [])
-
-def save_tasks(tasks):
-    write_json(TASKS_FILE, tasks)
-
 def read_tokens():
-    return read_json(TOKENS_FILE, {})
+    if not os.path.exists(TOKENS_FILE):
+        print(f"Warning: {TOKENS_FILE} not found, creating empty tokens")
+    tokens = read_json(TOKENS_FILE, {})
+    if not isinstance(tokens, dict):
+        print("Warning: Invalid tokens format, using empty dict")
+        return {}
+    return tokens
 
 def save_tokens(tokens):
     write_json(TOKENS_FILE, tokens)
@@ -48,10 +49,12 @@ def auth_required(func):
 
         if token not in tokens.values():
             return jsonify({"error": "Unauthorized"}), 401
-
         return func(*args, **kwargs)
     wrapper.__name__ = func.__name__
     return wrapper
+
+def error_response(error, status=400):
+    return jsonify({"success": False, "error": error}), status
 
 
 @app.route("/login", methods=["POST"])
@@ -78,7 +81,7 @@ class TaskAPI(MethodView):
     decorators = [auth_required]
 
     def get(self, task_id=None):
-        tasks = read_tasks()
+        tasks = read_json(TASKS_FILE, [])
         status = request.args.get("status")
 
         if task_id:
@@ -95,28 +98,35 @@ class TaskAPI(MethodView):
         return jsonify(tasks), 200
 
     def post(self):
-        data = request.get_json()
-        if not data.get("id"):
-            return jsonify({"error": "Task ID is required"}), 400
-        if not data.get("title"):
-            return jsonify({"error": "Title is required"}), 400
-        if not data.get("description"):
-            return jsonify({"error": "Description is required"}), 400
-        if not data.get("status"):
-            return jsonify({"error": "Status is required"}), 400
-        if data["status"] not in VALID_STATUSES:
-            return jsonify({"error": f"Invalid status. Must be one of {VALID_STATUSES}"}), 400
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "No JSON data provided"}), 400
+                
+            if not data.get("id"):
+                return jsonify({"error": "Task ID is required"}), 400
+            if not data.get("title"):
+                return jsonify({"error": "Title is required"}), 400
+            if not data.get("description"):
+                return jsonify({"error": "Description is required"}), 400
+            if not data.get("status"):
+                return jsonify({"error": "Status is required"}), 400
+            if data["status"] not in VALID_STATUSES:
+                return jsonify({"error": f"Invalid status. Must be one of {VALID_STATUSES}"}), 400
 
-        tasks = read_tasks()
-        if any(t["id"] == data["id"] for t in tasks):
-            return jsonify({"error": "Task with this ID already exists"}), 400
+            tasks = read_json(TASKS_FILE, [])
+            if any(t["id"] == data["id"] for t in tasks):
+                return jsonify({"error": "Task with this ID already exists"}), 400
 
-        tasks.append(data)
-        save_tasks(tasks)
-        return jsonify({"message": "Task created successfully"}), 201
+            tasks.append(data)
+            write_json(TASKS_FILE, tasks)
+            return jsonify({"message": "Task created successfully"}), 201
+        
+        except RuntimeError as e:
+            return error_response(str(e), 500)
 
     def put(self, task_id):
-        tasks = read_tasks()
+        tasks = read_json(TASKS_FILE, [])
         task = next((t for t in tasks if t["id"] == task_id), None)
         if not task:
             return jsonify({"error": "Task not found"}), 404
@@ -131,16 +141,16 @@ class TaskAPI(MethodView):
                 return jsonify({"error": f"Invalid status. Must be one of {VALID_STATUSES}"}), 400
             task["status"] = data["status"]
 
-        save_tasks(tasks)
+        write_json(TASKS_FILE, tasks)
         return jsonify({"message": "Task updated successfully"}), 200
 
     def delete(self, task_id):
-        tasks = read_tasks()
+        tasks = read_json(TASKS_FILE, [])
         new_tasks = [t for t in tasks if t["id"] != task_id]
         if len(tasks) == len(new_tasks):
             return jsonify({"error": "Task not found"}), 404
 
-        save_tasks(new_tasks)
+        write_json(TASKS_FILE, tasks)
         return jsonify({"message": "Task deleted successfully"}), 200
 
 task_view = TaskAPI.as_view("task_api")
