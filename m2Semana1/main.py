@@ -54,21 +54,24 @@ def validate_task_data(data, is_update=False):
 
 @app.route('/tasks', methods=['GET'])
 def get_tasks():
-    status = request.args.get('status')
-    tasks = read_tasks()
-    if status:
-        if status not in VALID_STATUS:
-            return error_response(f"Invalid status. Must be one of {VALID_STATUS}", 400)
-        tasks = [t for t in tasks if t['status'] == status]
-    return success_response(data=tasks)
+    try:
+        status = request.args.get('status')
+        tasks = read_tasks()
+        if status:
+            if status not in VALID_STATUS:
+                return error_response(f"Invalid status. Must be one of {VALID_STATUS}", 400)
+            tasks = [t for t in tasks if t['status'] == status]
+        return success_response(data=tasks)
+    except Exception as e:
+        return error_response(f"An unexpected error occurred: {str(e)}", 500)
 
 @app.route('/tasks', methods=['POST'])
 def create_task():
-    data = request.get_json()
-    error = validate_task_data(data)
-    if error:
-        return error_response(error, 400)
     try:
+        data = request.get_json()
+        error = validate_task_data(data)
+        if error:
+            return error_response(error, 400)
         tasks = read_tasks()
         if any(t['id'] == data['id'] for t in tasks):
             return error_response("Task with this ID already exists", 400)
@@ -82,41 +85,47 @@ def create_task():
         tasks.append(task)
         save_tasks(tasks)
         return success_response(data=task, message="Task created", status=201)
-    except RuntimeError as e:
-        return error_response(str(e), 500)
+    except Exception as e:
+        return error_response(f"An unexpected error occurred: {str(e)}", 500)
 
 @app.route('/tasks/<string:task_id>', methods=['PUT'])
 def update_task(task_id):
-    data = request.get_json()
-    error = validate_task_data(data, is_update=True)
-    if error:
-        return error_response(error, 400)
+    try:
+        data = request.get_json()
+        error = validate_task_data(data, is_update=True)
+        if error:
+            return error_response(error, 400)
 
-    tasks = read_tasks()
-    task = next((t for t in tasks if str(t['id']) == task_id), None)
-    if not task:
-        return error_response("Task not found", 404)
+        tasks = read_tasks()
+        task = next((t for t in tasks if str(t['id']) == task_id), None)
+        if not task:
+            return error_response("Task not found", 404)
 
-    if 'title' in data:
-        task['title'] = data['title']
-    if 'description' in data:
-        task['description'] = data['description']
-    if 'status' in data:
-        task['status'] = data['status']
+        if 'title' in data:
+            task['title'] = data['title']
+        if 'description' in data:
+            task['description'] = data['description']
+        if 'status' in data:
+            task['status'] = data['status']
 
-    save_tasks(tasks)
-    return success_response(data=task, message="Task updated successfully")
+        save_tasks(tasks)
+        return success_response(data=task, message="Task updated successfully")
+    except Exception as e:
+        return error_response(f"An unexpected error occurred: {str(e)}", 500)
 
 @app.route('/tasks/<string:task_id>', methods=['DELETE'])
 def delete_task(task_id):
-    tasks = read_tasks()
-    new_tasks = [t for t in tasks if str(t['id']) != task_id]
+    try:
+        tasks = read_tasks()
+        new_tasks = [t for t in tasks if str(t['id']) != task_id]
 
-    if len(tasks) == len(new_tasks):
-        return error_response("Task not found", 404)
+        if len(tasks) == len(new_tasks):
+            return error_response("Task not found", 404)
 
-    save_tasks(new_tasks)
-    return success_response(message="Task deleted")
+        save_tasks(new_tasks)
+        return success_response(message="Task deleted")
+    except Exception as e:
+        return error_response(f"An unexpected error occurred: {str(e)}", 500)
 
 if __name__ == '__main__':
     app.run(debug=True)
