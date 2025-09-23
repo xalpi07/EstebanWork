@@ -16,5 +16,17 @@
         "title": "Do exercise",
         "description": "Run 5 kilometers in the morning",
         "status": "Completed"
+    },
+    {
+        "id": 6,
+        "title": "Go study sciences",
+        "description": "Have to study to test",
+        "status": "To Do"
+    },
+    {
+        "id": 7,
+        "title": "Go to mall",
+        "description": "Have to buy shoes",
+        "status": "Completed"
     }
 ]

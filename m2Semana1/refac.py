@@ -81,77 +81,84 @@ class TaskAPI(MethodView):
     decorators = [auth_required]
 
     def get(self, task_id=None):
-        tasks = read_json(TASKS_FILE, [])
-        status = request.args.get("status")
+        try:
+            tasks = read_json(TASKS_FILE, [])
+            status = request.args.get("status")
 
-        if task_id:
-            task = next((t for t in tasks if t["id"] == task_id), None)
-            if not task:
-                return jsonify({"error": "Task not found"}), 404
-            return jsonify(task), 200
+            if task_id:
+                task = next((t for t in tasks if t["id"] == task_id), None)
+                if not task:
+                    return error_response("Task not found", 404)
+                return jsonify(task), 200
 
-        if status:
-            if status not in VALID_STATUSES:
-                return jsonify({"error": f"Invalid status. Must be one of {VALID_STATUSES}"}), 400
-            tasks = [t for t in tasks if t["status"] == status]
+            if status:
+                if status not in VALID_STATUSES:
+                    return error_response(f"Invalid status. Must be one of {VALID_STATUSES}", 400)
+                tasks = [t for t in tasks if t["status"] == status]
 
-        return jsonify(tasks), 200
+            return jsonify(tasks), 200
+        except Exception as e:
+            return error_response(f"An unexpected error occurred: {str(e)}", 500)
 
     def post(self):
         try:
             data = request.get_json()
             if not data:
-                return jsonify({"error": "No JSON data provided"}), 400
-                
+                return error_response("No JSON data provided", 400)
             if not data.get("id"):
-                return jsonify({"error": "Task ID is required"}), 400
+                return error_response("Task ID is required", 400)
             if not data.get("title"):
-                return jsonify({"error": "Title is required"}), 400
+                return error_response("Title is required", 400)
             if not data.get("description"):
-                return jsonify({"error": "Description is required"}), 400
+                return error_response("Description is required", 400)
             if not data.get("status"):
-                return jsonify({"error": "Status is required"}), 400
+                return error_response("Status is required", 400)
             if data["status"] not in VALID_STATUSES:
-                return jsonify({"error": f"Invalid status. Must be one of {VALID_STATUSES}"}), 400
+                return error_response(f"Invalid status. Must be one of {VALID_STATUSES}", 400)
 
             tasks = read_json(TASKS_FILE, [])
             if any(t["id"] == data["id"] for t in tasks):
-                return jsonify({"error": "Task with this ID already exists"}), 400
+                return error_response("Task with this ID already exists", 400)
 
             tasks.append(data)
             write_json(TASKS_FILE, tasks)
             return jsonify({"message": "Task created successfully"}), 201
-        
-        except RuntimeError as e:
-            return error_response(str(e), 500)
+        except Exception as e:
+            return error_response(f"An unexpected error occurred: {str(e)}", 500)
 
     def put(self, task_id):
-        tasks = read_json(TASKS_FILE, [])
-        task = next((t for t in tasks if t["id"] == task_id), None)
-        if not task:
-            return jsonify({"error": "Task not found"}), 404
+        try:
+            tasks = read_json(TASKS_FILE, [])
+            task = next((t for t in tasks if t["id"] == task_id), None)
+            if not task:
+                return error_response("Task not found", 404)
 
-        data = request.get_json()
-        if "title" in data:
-            task["title"] = data["title"]
-        if "description" in data:
-            task["description"] = data["description"]
-        if "status" in data:
-            if data["status"] not in VALID_STATUSES:
-                return jsonify({"error": f"Invalid status. Must be one of {VALID_STATUSES}"}), 400
-            task["status"] = data["status"]
+            data = request.get_json()
+            if "title" in data:
+                task["title"] = data["title"]
+            if "description" in data:
+                task["description"] = data["description"]
+            if "status" in data:
+                if data["status"] not in VALID_STATUSES:
+                    return error_response(f"Invalid status. Must be one of {VALID_STATUSES}", 400)
+                task["status"] = data["status"]
 
-        write_json(TASKS_FILE, tasks)
-        return jsonify({"message": "Task updated successfully"}), 200
+            write_json(TASKS_FILE, tasks)
+            return jsonify({"message": "Task updated successfully"}), 200
+        except Exception as e:
+            return error_response(f"An unexpected error occurred: {str(e)}", 500)
 
     def delete(self, task_id):
-        tasks = read_json(TASKS_FILE, [])
-        new_tasks = [t for t in tasks if t["id"] != task_id]
-        if len(tasks) == len(new_tasks):
-            return jsonify({"error": "Task not found"}), 404
+        try:
+            tasks = read_json(TASKS_FILE, [])
+            new_tasks = [t for t in tasks if t["id"] != task_id]
+            if len(tasks) == len(new_tasks):
+                return error_response("Task not found", 404)
 
-        write_json(TASKS_FILE, tasks)
-        return jsonify({"message": "Task deleted successfully"}), 200
+            write_json(TASKS_FILE, new_tasks)
+            return jsonify({"message": "Task deleted successfully"}), 200
+        except Exception as e:
+            return error_response(f"An unexpected error occurred: {str(e)}", 500)
 
 task_view = TaskAPI.as_view("task_api")
 app.add_url_rule("/tasks", defaults={"task_id": None}, view_func=task_view, methods=["GET"])
