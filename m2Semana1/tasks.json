@@ -1,0 +1,32 @@
+[
+    {
+        "id": "1",
+        "title": "Buy groceries",
+        "description": "Milk, bread, eggs",
+        "status": "ToDo"
+    },
+    {
+        "id": "2",
+        "title": "Go to work",
+        "description": "Create new API",
+        "status": "ToDo"
+    },
+    {
+        "id": "5",
+        "title": "Do exercise",
+        "description": "Run 5 kilometers in the morning",
+        "status": "Completed"
+    },
+    {
+        "id": 6,
+        "title": "Go study sciences",
+        "description": "Have to study to test",
+        "status": "To Do"
+    },
+    {
+        "id": 7,
+        "title": "Go to mall",
+        "description": "Have to buy shoes",
+        "status": "Completed"
+    }
+]
