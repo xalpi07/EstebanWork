@@ -1,0 +1,3 @@
+--SQLite
+SELECT * FROM Books
+WHERE ID NOT IN (SELECT BookID FROM Rents);

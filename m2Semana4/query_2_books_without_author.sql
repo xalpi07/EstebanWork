@@ -1,0 +1,2 @@
+--SQLite
+SELECT * FROM Books WHERE Author IS NULL;

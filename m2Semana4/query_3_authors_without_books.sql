@@ -1,0 +1,3 @@
+--SQLite
+SELECT * FROM Authors
+WHERE ID NOT IN (SELECT Author FROM Books WHERE Author IS NOT NULL);
