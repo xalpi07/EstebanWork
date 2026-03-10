@@ -1,0 +1,35 @@
+CREATE TABLE lyfter_car_rental.rentals (
+    id              SERIAL PRIMARY KEY,
+    user_id         INTEGER NOT NULL REFERENCES lyfter_car_rental.users(id),
+    automobile_id   INTEGER NOT NULL REFERENCES lyfter_car_rental.cars(id),
+    rental_date     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status          VARCHAR(30) NOT NULL DEFAULT 'activo' CHECK (status IN ('activo', 'completado', 'cancelado', 'vencido'))
+);
+
+INSERT INTO lyfter_car_rental.rentals (user_id, automobile_id, rental_date, status) VALUES
+(1, 3, '2024-01-15 09:30:00+00', 'completado'),
+(2, 11, '2024-02-20 14:00:00+00', 'completado'),
+(3, 19, '2024-03-10 08:15:00+00', 'completado'),
+(5, 2, CURRENT_TIMESTAMP - INTERVAL '2 days', 'activo'),
+(7, 24, CURRENT_TIMESTAMP - INTERVAL '5 days', 'activo'),
+(9, 1, '2024-01-08 10:00:00+00', 'completado'),
+(12, 6, '2024-02-14 11:30:00+00', 'completado'),
+(14, 30, CURRENT_TIMESTAMP - INTERVAL '1 day', 'activo'),
+(16, 8, '2024-03-01 16:45:00+00', 'completado'),
+(18, 36, '2024-02-28 07:00:00+00', 'completado'),
+(20, 4, CURRENT_TIMESTAMP - INTERVAL '3 hours', 'activo'),
+(22, 10, '2024-01-22 13:20:00+00', 'completado'),
+(24, 15, '2024-03-05 09:00:00+00', 'vencido'),
+(26, 20, '2024-02-10 15:30:00+00', 'cancelado'),
+(28, 25, CURRENT_TIMESTAMP - INTERVAL '12 hours', 'activo'),
+(30, 7, '2024-01-30 08:00:00+00', 'completado'),
+(32, 12, '2024-02-25 12:00:00+00', 'completado'),
+(34, 39, CURRENT_TIMESTAMP - INTERVAL '4 days', 'activo'),
+(36, 5, '2024-02-01 10:15:00+00', 'completado'),
+(38, 14, '2024-03-08 14:30:00+00', 'completado'),
+(40, 21, '2024-01-18 09:45:00+00', 'completado'),
+(42, 28, CURRENT_TIMESTAMP - INTERVAL '6 hours', 'activo'),
+(44, 9, '2024-02-05 11:00:00+00', 'completado'),
+(46, 17, '2024-03-12 08:30:00+00', 'completado'),
+(48, 23, '2024-01-25 16:00:00+00', 'cancelado'),
+(50, 31, CURRENT_TIMESTAMP - INTERVAL '1 hour', 'activo');
