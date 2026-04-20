@@ -1,3 +1,5 @@
+BEGIN;
+
 SELECT stock, precio
 FROM productos
 WHERE id = 1
@@ -27,3 +29,5 @@ VALUES (
 UPDATE productos
 SET stock = stock - 2
 WHERE id = 1;
+
+COMMIT;

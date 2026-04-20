@@ -1,3 +1,5 @@
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS usuarios (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(200) NOT NULL,
@@ -31,3 +33,5 @@ CREATE TABLE IF NOT EXISTS facturas (
 CREATE INDEX IF NOT EXISTS idx_facturas_usuario ON facturas (usuario_id);
 CREATE INDEX IF NOT EXISTS idx_facturas_producto ON facturas (producto_id);
 CREATE INDEX IF NOT EXISTS idx_facturas_estado ON facturas (estado);
+
+COMMIT;
