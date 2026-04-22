@@ -1,13 +1,25 @@
-BEGIN;
+BEGIN TRANSACTION;
 
-SELECT stock, precio
-FROM productos
-WHERE id = 1
-FOR UPDATE;
+IF NOT EXISTS (
+    SELECT 1
+    FROM productos
+    WHERE id = 1
+      AND stock >= 2
+)
+BEGIN
+    ROLLBACK TRANSACTION;
+    RETURN;
+END;
 
-SELECT 1
-FROM usuarios
-WHERE id = 1;
+IF NOT EXISTS (
+    SELECT 1
+    FROM usuarios
+    WHERE id = 1
+)
+BEGIN
+    ROLLBACK TRANSACTION;
+    RETURN;
+END;
 
 INSERT INTO facturas (
     usuario_id,
@@ -23,11 +35,20 @@ VALUES (
     2,
     (SELECT precio FROM productos WHERE id = 1),
     (SELECT precio FROM productos WHERE id = 1) * 2,
-    'completada'
+    N'completada'
 );
 
 UPDATE productos
 SET stock = stock - 2
 WHERE id = 1;
 
-COMMIT;
+SAVE TRANSACTION factura_creada;
+
+IF 0 = 1
+BEGIN
+    ROLLBACK TRANSACTION factura_creada;
+    ROLLBACK TRANSACTION;
+    RETURN;
+END;
+
+COMMIT TRANSACTION;
