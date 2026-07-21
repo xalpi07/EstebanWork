@@ -52,6 +52,29 @@ invoice_table = Table(
 )
 
 
+class ProductNotFoundError(Exception):
+    def __init__(self, product_id):
+        self.product_id = product_id
+        super().__init__(f"Product {product_id} not found")
+
+
+class InsufficientStockError(Exception):
+    def __init__(self, product_id, available, requested):
+        self.product_id = product_id
+        self.available = available
+        self.requested = requested
+        super().__init__(
+            f"Insufficient stock for product {product_id}: "
+            f"available={available}, requested={requested}"
+        )
+
+
+class InvalidPurchaseError(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(message)
+
+
 class DB_Manager:
     def __init__(self):
         self.engine = create_engine(
@@ -164,39 +187,81 @@ class DB_Manager:
             conn.commit()
             return result.rowcount > 0
 
-    def create_purchase(self, user_id, product_id, quantity):
+    def create_purchase(self, user_id, items):
+        if not items:
+            raise InvalidPurchaseError("Purchase must include at least one product")
+
         with self.engine.begin() as conn:
-            product = conn.execute(
-                select(product_table).where(product_table.c.id == product_id)
-            ).first()
+            invoices = []
+            purchase_total = Decimal("0")
+            invoice_date = datetime.now()
 
-            if product is None:
-                return None, "not_found"
+            for item in items:
+                product_id = item.get("product_id")
+                quantity = item.get("quantity")
 
-            if product.quantity < quantity:
-                return None, "insufficient_stock"
+                if product_id is None or quantity is None:
+                    raise InvalidPurchaseError(
+                        "Each item must include product_id and quantity"
+                    )
 
-            total_price = Decimal(str(product.price)) * quantity
+                try:
+                    product_id = int(product_id)
+                    quantity = int(quantity)
+                except (TypeError, ValueError):
+                    raise InvalidPurchaseError(
+                        "product_id and quantity must be integers"
+                    )
 
-            conn.execute(
-                update(product_table)
-                .where(product_table.c.id == product_id)
-                .values(quantity=product.quantity - quantity)
-            )
+                if quantity <= 0:
+                    raise InvalidPurchaseError("quantity must be greater than 0")
 
-            invoice_id = conn.execute(
-                insert(invoice_table)
-                .returning(invoice_table.c.id)
-                .values(
-                    user_id=user_id,
-                    product_id=product_id,
-                    quantity=quantity,
-                    total_price=total_price,
-                    invoice_date=datetime.now(),
+                product = conn.execute(
+                    select(product_table).where(product_table.c.id == product_id)
+                ).first()
+
+                if product is None:
+                    raise ProductNotFoundError(product_id)
+
+                if product.quantity < quantity:
+                    raise InsufficientStockError(
+                        product_id, product.quantity, quantity
+                    )
+
+                line_total = Decimal(str(product.price)) * quantity
+                purchase_total += line_total
+
+                conn.execute(
+                    update(product_table)
+                    .where(product_table.c.id == product_id)
+                    .values(quantity=product.quantity - quantity)
                 )
-            ).all()[0][0]
 
-            return invoice_id, total_price
+                invoice_id = conn.execute(
+                    insert(invoice_table)
+                    .returning(invoice_table.c.id)
+                    .values(
+                        user_id=user_id,
+                        product_id=product_id,
+                        quantity=quantity,
+                        total_price=line_total,
+                        invoice_date=invoice_date,
+                    )
+                ).all()[0][0]
+
+                invoices.append(
+                    {
+                        "invoice_id": invoice_id,
+                        "product_id": product_id,
+                        "quantity": quantity,
+                        "total_price": float(line_total),
+                    }
+                )
+
+            return {
+                "invoices": invoices,
+                "total_price": float(purchase_total),
+            }
 
     def get_invoices_by_user(self, user_id):
         stmt = select(invoice_table).where(invoice_table.c.user_id == user_id)

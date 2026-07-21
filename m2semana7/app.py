@@ -1,10 +1,15 @@
 import os
 from datetime import datetime
 
-from db import DB_Manager
+from db import (
+    DB_Manager,
+    ProductNotFoundError,
+    InsufficientStockError,
+    InvalidPurchaseError,
+)
 from JWT_Manager import JWT_Manager
 from auth import configure_auth, require_auth
-from flask import Flask, request, Response, jsonify, g
+from flask import Flask, request, jsonify, g
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -50,16 +55,37 @@ def parse_date(value):
         return None
 
 
+def normalize_purchase_items(data):
+    if data is None:
+        return None
+
+    if data.get("products") is not None:
+        products = data.get("products")
+        if not isinstance(products, list):
+            return None
+        return products
+
+    if data.get("product_id") is not None or data.get("quantity") is not None:
+        return [
+            {
+                "product_id": data.get("product_id"),
+                "quantity": data.get("quantity"),
+            }
+        ]
+
+    return None
+
+
 @app.route("/liveness")
 def liveness():
-    return "<p>Hello, World!</p>"
+    return jsonify(message="Hello, World!")
 
 
 @app.route("/register", methods=["POST"])
 def register():
     data = request.get_json()
     if data is None or data.get("username") is None or data.get("password") is None:
-        return Response(status=400)
+        return jsonify(error="Bad Request"), 400
 
     result = db_manager.insert_user(data.get("username"), data.get("password"), "user")
     user_id = result[0]
@@ -72,11 +98,11 @@ def register():
 def login():
     data = request.get_json()
     if data is None or data.get("username") is None or data.get("password") is None:
-        return Response(status=400)
+        return jsonify(error="Bad Request"), 400
 
     result = db_manager.get_user(data.get("username"), data.get("password"))
     if result is None:
-        return Response(status=403)
+        return jsonify(error="Forbidden"), 403
 
     token = create_token(result)
     return jsonify(token=token)
@@ -101,7 +127,7 @@ def list_products():
 def get_product(product_id):
     product = db_manager.get_product_by_id(product_id)
     if product is None:
-        return Response(status=404)
+        return jsonify(error="Not Found"), 404
     return jsonify(product_to_dict(product))
 
 
@@ -110,7 +136,7 @@ def get_product(product_id):
 def create_product():
     data = request.get_json()
     if data is None:
-        return Response(status=400)
+        return jsonify(error="Bad Request"), 400
 
     name = data.get("name")
     price = data.get("price")
@@ -118,16 +144,16 @@ def create_product():
     quantity = data.get("quantity")
 
     if name is None or price is None or entry_date is None or quantity is None:
-        return Response(status=400)
+        return jsonify(error="Bad Request"), 400
 
     try:
         quantity = int(quantity)
         price = float(price)
     except (TypeError, ValueError):
-        return Response(status=400)
+        return jsonify(error="Bad Request"), 400
 
     if quantity < 0 or price < 0:
-        return Response(status=400)
+        return jsonify(error="Bad Request"), 400
 
     result = db_manager.insert_product(name, price, entry_date, quantity)
     product = db_manager.get_product_by_id(result[0])
@@ -139,7 +165,7 @@ def create_product():
 def update_product(product_id):
     data = request.get_json()
     if data is None:
-        return Response(status=400)
+        return jsonify(error="Bad Request"), 400
 
     name = data.get("name")
     price = data.get("price")
@@ -147,19 +173,19 @@ def update_product(product_id):
     quantity = data.get("quantity")
 
     if name is None or price is None or entry_date is None or quantity is None:
-        return Response(status=400)
+        return jsonify(error="Bad Request"), 400
 
     if db_manager.get_product_by_id(product_id) is None:
-        return Response(status=404)
+        return jsonify(error="Not Found"), 404
 
     try:
         quantity = int(quantity)
         price = float(price)
     except (TypeError, ValueError):
-        return Response(status=400)
+        return jsonify(error="Bad Request"), 400
 
     if quantity < 0 or price < 0:
-        return Response(status=400)
+        return jsonify(error="Bad Request"), 400
 
     db_manager.update_product(product_id, name, price, entry_date, quantity)
     product = db_manager.get_product_by_id(product_id)
@@ -170,47 +196,35 @@ def update_product(product_id):
 @require_auth(["admin"])
 def delete_product(product_id):
     if db_manager.get_product_by_id(product_id) is None:
-        return Response(status=404)
+        return jsonify(error="Not Found"), 404
 
     db_manager.delete_product(product_id)
-    return Response(status=204)
+    return jsonify(message="Deleted"), 200
 
 
 @app.route("/purchase", methods=["POST"])
 @require_auth(["user", "admin"])
 def purchase():
     data = request.get_json()
-    if data is None:
-        return Response(status=400)
+    items = normalize_purchase_items(data)
 
-    product_id = data.get("product_id")
-    quantity = data.get("quantity")
-
-    if product_id is None or quantity is None:
-        return Response(status=400)
+    if items is None:
+        return jsonify(error="Bad Request"), 400
 
     try:
-        product_id = int(product_id)
-        quantity = int(quantity)
-    except (TypeError, ValueError):
-        return Response(status=400)
-
-    if quantity <= 0:
-        return Response(status=400)
-
-    invoice_id, result = db_manager.create_purchase(g.current_user[0], product_id, quantity)
-
-    if result == "not_found":
-        return Response(status=404)
-    if result == "insufficient_stock":
-        return Response(status=400)
-
-    return jsonify(
-        {
-            "invoice_id": invoice_id,
-            "total_price": float(result),
-        }
-    ), 201
+        result = db_manager.create_purchase(g.current_user[0], items)
+        return jsonify(result), 201
+    except ProductNotFoundError as e:
+        return jsonify(error="Not Found", product_id=e.product_id), 404
+    except InsufficientStockError as e:
+        return jsonify(
+            error="Insufficient stock",
+            product_id=e.product_id,
+            available=e.available,
+            requested=e.requested,
+        ), 400
+    except InvalidPurchaseError as e:
+        return jsonify(error=e.message), 400
 
 
 @app.route("/invoices", methods=["GET"])
@@ -224,7 +238,7 @@ def list_invoices():
 @require_auth(["admin"])
 def list_client_invoices(user_id):
     if db_manager.get_user_by_id(user_id) is None:
-        return Response(status=404)
+        return jsonify(error="Not Found"), 404
 
     invoices = db_manager.get_invoices_by_user(user_id)
     return jsonify([invoice_to_dict(invoice) for invoice in invoices])

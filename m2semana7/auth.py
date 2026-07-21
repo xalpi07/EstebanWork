@@ -1,9 +1,6 @@
-import os
 from functools import wraps
 
-from flask import request, Response, g
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+from flask import request, jsonify, g
 
 jwt_manager = None
 db_manager = None
@@ -28,19 +25,19 @@ def require_auth(allowed_roles=None):
         def wrapped(*args, **kwargs):
             token = get_token_from_header()
             if token is None:
-                return Response(status=401)
+                return jsonify(error="Unauthorized"), 401
 
             decoded = jwt_manager.decode(token)
             if decoded is None:
-                return Response(status=403)
+                return jsonify(error="Forbidden"), 403
 
             user = db_manager.get_user_by_id(decoded["id"])
             if user is None:
-                return Response(status=403)
+                return jsonify(error="Forbidden"), 403
 
             role = user[3]
             if allowed_roles is not None and role not in allowed_roles:
-                return Response(status=403)
+                return jsonify(error="Forbidden"), 403
 
             g.current_user = user
             return f(*args, **kwargs)
