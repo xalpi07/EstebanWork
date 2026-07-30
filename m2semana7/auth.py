@@ -29,11 +29,11 @@ def require_auth(allowed_roles=None):
 
             decoded = jwt_manager.decode(token)
             if decoded is None:
-                return jsonify(error="Forbidden"), 403
+                return jsonify(error="Unauthorized"), 401
 
             user = db_manager.get_user_by_id(decoded["id"])
             if user is None:
-                return jsonify(error="Forbidden"), 403
+                return jsonify(error="Unauthorized"), 401
 
             role = user[3]
             if allowed_roles is not None and role not in allowed_roles:

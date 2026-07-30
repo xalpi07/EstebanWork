@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime
 from decimal import Decimal
 
@@ -75,6 +76,10 @@ class InvalidPurchaseError(Exception):
         super().__init__(message)
 
 
+def hash_password(password):
+    return hashlib.md5(password.encode("utf-8")).hexdigest()
+
+
 class DB_Manager:
     def __init__(self):
         self.engine = create_engine(
@@ -100,7 +105,7 @@ class DB_Manager:
                 conn.execute(
                     insert(user_table).values(
                         username="admin",
-                        password="21232f297a57a5a743894a0e4a801fc3",
+                        password=hash_password("admin"),
                         role="admin",
                     )
                 )
@@ -110,7 +115,7 @@ class DB_Manager:
         stmt = (
             insert(user_table)
             .returning(user_table.c.id)
-            .values(username=username, password=password, role=role)
+            .values(username=username, password=hash_password(password), role=role)
         )
         with self.engine.connect() as conn:
             result = conn.execute(stmt)
@@ -121,7 +126,7 @@ class DB_Manager:
         stmt = (
             select(user_table)
             .where(user_table.c.username == username)
-            .where(user_table.c.password == password)
+            .where(user_table.c.password == hash_password(password))
         )
         with self.engine.connect() as conn:
             result = conn.execute(stmt)
