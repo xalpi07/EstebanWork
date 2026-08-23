@@ -1,0 +1,6 @@
+flask
+PyJWT
+sqlalchemy
+psycopg2-binary
+cryptography
+redis
