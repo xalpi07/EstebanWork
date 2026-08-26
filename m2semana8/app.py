@@ -36,6 +36,15 @@ def product_cache_key(product_id):
     return f"product:{product_id}"
 
 
+def products_cache_key():
+    return "products:all"
+
+
+def invalidate_product_cache(product_id):
+    cache_manager.delete_data(product_cache_key(product_id))
+    cache_manager.delete_data(products_cache_key())
+
+
 def product_to_dict(product):
     return {
         "id": product[0],
@@ -160,8 +169,18 @@ def me():
 @app.route("/products", methods=["GET"])
 @require_auth(["admin"])
 def list_products():
+    key = products_cache_key()
+
+    cached = cache_manager.get_data(key)
+    if cached is not None:
+        return jsonify(json.loads(cached))
+
     products = db_manager.get_all_products()
-    return jsonify([product_to_dict(product) for product in products])
+    products_dict = [product_to_dict(product) for product in products]
+    cache_manager.store_data(
+        key, json.dumps(products_dict), time_to_live=PRODUCT_CACHE_TTL
+    )
+    return jsonify(products_dict)
 
 
 @app.route("/products/<int:product_id>", methods=["GET"])
@@ -169,18 +188,18 @@ def list_products():
 def get_product(product_id):
     key = product_cache_key(product_id)
 
-    key_exists, _ = cache_manager.check_key(key)
-    if key_exists:
-        cached = cache_manager.get_data(key)
-        if cached is not None:
-            return jsonify(json.loads(cached))
+    cached = cache_manager.get_data(key)
+    if cached is not None:
+        return jsonify(json.loads(cached))
 
     product = db_manager.get_product_by_id(product_id)
     if product is None:
         return jsonify(error="Not Found"), 404
 
     product_dict = product_to_dict(product)
-    cache_manager.store_data(key, json.dumps(product_dict), PRODUCT_CACHE_TTL)
+    cache_manager.store_data(
+        key, json.dumps(product_dict), time_to_live=PRODUCT_CACHE_TTL
+    )
     return jsonify(product_dict)
 
 
@@ -198,7 +217,7 @@ def create_product():
         payload["quantity"],
     )
     product = db_manager.get_product_by_id(result[0])
-    cache_manager.delete_data(product_cache_key(product[0]))
+    invalidate_product_cache(product[0])
     return jsonify(product_to_dict(product)), 201
 
 
@@ -219,7 +238,7 @@ def update_product(product_id):
         payload["entry_date"],
         payload["quantity"],
     )
-    cache_manager.delete_data(product_cache_key(product_id))
+    invalidate_product_cache(product_id)
     product = db_manager.get_product_by_id(product_id)
     return jsonify(product_to_dict(product))
 
@@ -231,7 +250,7 @@ def delete_product(product_id):
         return jsonify(error="Not Found"), 404
 
     db_manager.delete_product(product_id)
-    cache_manager.delete_data(product_cache_key(product_id))
+    invalidate_product_cache(product_id)
     return jsonify(message="Deleted"), 200
 
 
@@ -248,6 +267,7 @@ def purchase():
         result = db_manager.create_purchase(g.current_user[0], items)
         for invoice in result["invoices"]:
             cache_manager.delete_data(product_cache_key(invoice["product_id"]))
+        cache_manager.delete_data(products_cache_key())
         return jsonify(result), 201
     except ProductNotFoundError as e:
         return jsonify(error="Not Found", product_id=e.product_id), 404
