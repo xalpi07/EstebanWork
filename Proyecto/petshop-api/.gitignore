@@ -1,0 +1,24 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+
+.venv/
+venv/
+.env
+
+.pytest_cache/
+.coverage
+htmlcov/
+test_report.txt
+
+*.log
+.DS_Store
+Thumbs.db
+
+# Llaves JWT generadas con generate_keys.py
+keys/*.pem
+!keys/.gitkeep
