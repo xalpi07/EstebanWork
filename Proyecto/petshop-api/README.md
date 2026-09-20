@@ -125,7 +125,7 @@ python run_tests.py
 El script ejecuta pytest, resume los resultados en consola y escribe
 `test_report.txt` con el conteo y la salida completa.
 
-La suite tiene 80 pruebas que cubren tanto los flujos exitosos como los de error:
+La suite tiene 82 pruebas que cubren tanto los flujos exitosos como los de error:
 token invalido, rol sin permiso, stock insuficiente, carrito ya facturado, factura
 devuelta dos veces y acceso a recursos de otro usuario.
 
@@ -141,6 +141,10 @@ al no haber cache, las consultas van directo a PostgreSQL.
 
 Todas las rutas excepto `/liveness`, `/register` y `/login` requieren el header
 `Authorization: Bearer <token>`.
+
+El token vence a las 8 horas de emitido, segun la constante `TOKEN_TTL_HOURS` de
+`app.py`. Una vez vencido las rutas protegidas responden `401` y hay que volver a
+llamar a `/login` para obtener uno nuevo.
 
 ### Autenticacion
 
@@ -257,7 +261,7 @@ catalogo, pero no participa en ninguna decision de negocio.
 | Codigo | Cuando se devuelve |
 |---|---|
 | `400` | datos invalidos o incompletos en la peticion |
-| `401` | falta el token, es invalido, o el usuario fue desactivado |
+| `401` | falta el token, es invalido, vencio, o el usuario fue desactivado |
 | `403` | el rol no tiene permiso, o el recurso pertenece a otro usuario |
 | `404` | el recurso no existe |
 | `409` | conflicto de estado: usuario duplicado, carrito ya facturado, factura ya devuelta |

@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import datetime, timedelta, timezone
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -13,7 +14,7 @@ TEST_DB_URL = os.getenv(
 os.environ["DATABASE_URL"] = TEST_DB_URL
 os.environ["REDIS_DB"] = "15"
 
-from app import app, db_manager, cache_manager
+from app import app, db_manager, cache_manager, jwt_manager
 
 BILLING_ADDRESS = {
     "full_name": "Maria Rodriguez",
@@ -66,6 +67,15 @@ def client_header(client):
 
 def other_client_header(client):
     return header(login(client, "carlos", "client123"))
+
+
+def decode_token(token):
+    return jwt_manager.decode(token)
+
+
+def expired_token(user_id, role="client"):
+    expiration = datetime.now(timezone.utc) - timedelta(minutes=5)
+    return jwt_manager.encode({"id": user_id, "role": role, "exp": expiration})
 
 
 def create_product(client, name="Croquetas Adulto Perro 2kg", price=8500, stock=10):

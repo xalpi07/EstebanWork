@@ -35,10 +35,10 @@ def require_auth(allowed_roles=None):
             if user is None:
                 return jsonify(error="Unauthorized"), 401
 
-            if user[5] == False:
+            if user.is_active == False:
                 return jsonify(error="Unauthorized"), 401
 
-            role = user[4]
+            role = user.role
             if allowed_roles is not None and role not in allowed_roles:
                 return jsonify(error="Forbidden"), 403
 

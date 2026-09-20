@@ -32,7 +32,7 @@ def seed():
         else:
             print(f"El usuario {username} ya existe, se omite.")
 
-    existing = [product[1] for product in db_manager.get_all_products()]
+    existing = [product.name for product in db_manager.get_all_products()]
 
     for name, description, price, stock, category in PRODUCTS:
         if name in existing:

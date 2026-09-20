@@ -166,7 +166,16 @@ arranque.
 ## 9. Autenticacion con JWT RS256
 
 Los tokens se firman con RSA usando un par de llaves: la privada firma y la publica
-verifica. El payload contiene el `id` y el `role` del usuario.
+verifica. El payload contiene el `id` y el `role` del usuario, mas un claim `exp`
+con la fecha de vencimiento.
+
+El vencimiento se fija en 8 horas mediante la constante `TOKEN_TTL_HOURS` de
+`app.py`. Sin ese claim un token robado serviria para siempre, porque la firma RSA
+no caduca por si sola. PyJWT valida `exp` de forma automatica al decodificar, asi
+que un token vencido hace que `JWT_Manager.decode()` retorne `None` y el decorador
+`require_auth()` responda `401 Unauthorized`, el mismo camino que un token invalido.
+No existe mecanismo de refresh: al vencer, el cliente vuelve a autenticarse contra
+`/login`.
 
 RS256 se eligio sobre HS256 porque permite distribuir la llave publica a otros
 servicios para que validen tokens sin poder emitirlos. Con un algoritmo simetrico,
@@ -213,7 +222,7 @@ por telefono o copiar de un comprobante. Por eso `GET /invoices/<numero>` busca 
 
 ## 13. Pruebas
 
-La suite tiene 80 pruebas con `pytest`, organizadas por area: `test_auth.py`,
+La suite tiene 82 pruebas con `pytest`, organizadas por area: `test_auth.py`,
 `test_products.py`, `test_carts.py`, `test_sales.py`, `test_invoices.py`,
 `test_permissions.py` y `test_cache.py`. Cada area cubre tanto los casos exitosos
 como los de error, verificando el codigo HTTP y el mensaje devuelto.

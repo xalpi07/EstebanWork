@@ -356,8 +356,8 @@ class DB_Manager:
                 cart_item_table.c.cart_id,
                 cart_item_table.c.product_id,
                 cart_item_table.c.quantity,
-                product_table.c.name,
-                product_table.c.price,
+                product_table.c.name.label("product_name"),
+                product_table.c.price.label("unit_price"),
             )
             .join(product_table, cart_item_table.c.product_id == product_table.c.id)
             .where(cart_item_table.c.cart_id == cart_id)
@@ -387,8 +387,8 @@ class DB_Manager:
         else:
             stmt = (
                 update(cart_item_table)
-                .where(cart_item_table.c.id == item[0])
-                .values(quantity=item[3] + quantity)
+                .where(cart_item_table.c.id == item.id)
+                .values(quantity=item.quantity + quantity)
             )
         with self.engine.connect() as conn:
             conn.execute(stmt)
@@ -433,7 +433,7 @@ class DB_Manager:
             if cart is None:
                 raise CartNotFoundError(cart_id)
 
-            if cart[2] != "open":
+            if cart.status != "open":
                 raise CartClosedError(cart_id)
 
             items = conn.execute(
@@ -449,8 +449,8 @@ class DB_Manager:
             lines = []
 
             for item in items:
-                product_id = item[2]
-                quantity = item[3]
+                product_id = item.product_id
+                quantity = item.quantity
 
                 product = conn.execute(
                     select(product_table)
@@ -458,14 +458,14 @@ class DB_Manager:
                     .with_for_update()
                 ).first()
 
-                if product is None or product[6] == False:
+                if product is None or product.is_active == False:
                     raise ProductNotFoundError(product_id)
 
-                available = product[4]
+                available = product.stock
                 if available < quantity:
                     raise InsufficientStockError(product_id, available, quantity)
 
-                unit_price = Decimal(str(product[3]))
+                unit_price = Decimal(str(product.price))
                 line_total = unit_price * quantity
                 total += line_total
 
@@ -489,7 +489,7 @@ class DB_Manager:
                     status="completed",
                     total=total,
                 )
-            ).all()[0][0]
+            ).all()[0].id
 
             for line in lines:
                 conn.execute(
@@ -548,10 +548,10 @@ class DB_Manager:
             if invoice is None:
                 raise InvoiceNotFoundError(invoice_number)
 
-            if invoice[4] == "refunded":
+            if invoice.status == "refunded":
                 raise InvoiceAlreadyRefundedError(invoice_number)
 
-            invoice_id = invoice[0]
+            invoice_id = invoice.id
             items = conn.execute(
                 select(invoice_item_table).where(
                     invoice_item_table.c.invoice_id == invoice_id
@@ -561,8 +561,8 @@ class DB_Manager:
             for item in items:
                 conn.execute(
                     update(product_table)
-                    .where(product_table.c.id == item[2])
-                    .values(stock=product_table.c.stock + item[3])
+                    .where(product_table.c.id == item.product_id)
+                    .values(stock=product_table.c.stock + item.quantity)
                 )
 
             conn.execute(
@@ -571,7 +571,7 @@ class DB_Manager:
                 .values(status="refunded")
             )
 
-            return [item[2] for item in items]
+            return [item.product_id for item in items]
 
     def get_invoice_by_number(self, invoice_number):
         stmt = select(invoice_table).where(
@@ -604,7 +604,7 @@ class DB_Manager:
                 invoice_item_table.c.quantity,
                 invoice_item_table.c.unit_price,
                 invoice_item_table.c.line_total,
-                product_table.c.name,
+                product_table.c.name.label("product_name"),
             )
             .join(product_table, invoice_item_table.c.product_id == product_table.c.id)
             .where(invoice_item_table.c.invoice_id == invoice_id)

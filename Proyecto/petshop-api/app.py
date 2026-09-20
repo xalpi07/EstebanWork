@@ -1,5 +1,6 @@
 import os
 import json
+from datetime import datetime, timedelta, timezone
 
 from db import (
     DB_Manager,
@@ -20,6 +21,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 PRODUCT_CACHE_TTL = 300
 INVOICE_CACHE_TTL = 600
+TOKEN_TTL_HOURS = 8
 
 app = Flask("petshop-api")
 db_manager = DB_Manager()
@@ -60,33 +62,33 @@ def invalidate_invoice_cache(invoice_number):
 
 def user_to_dict(user):
     return {
-        "id": user[0],
-        "username": user[1],
-        "email": user[2],
-        "role": user[4],
-        "is_active": user[5],
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "role": user.role,
+        "is_active": user.is_active,
     }
 
 
 def product_to_dict(product):
     return {
-        "id": product[0],
-        "name": product[1],
-        "description": product[2],
-        "price": float(product[3]),
-        "stock": product[4],
-        "category": product[5],
-        "is_active": product[6],
+        "id": product.id,
+        "name": product.name,
+        "description": product.description,
+        "price": float(product.price),
+        "stock": product.stock,
+        "category": product.category,
+        "is_active": product.is_active,
     }
 
 
 def cart_item_to_dict(item):
     return {
-        "product_id": item[2],
-        "product_name": item[4],
-        "quantity": item[3],
-        "unit_price": float(item[5]),
-        "line_total": float(item[5]) * item[3],
+        "product_id": item.product_id,
+        "product_name": item.product_name,
+        "quantity": item.quantity,
+        "unit_price": float(item.unit_price),
+        "line_total": float(item.unit_price) * item.quantity,
     }
 
 
@@ -96,9 +98,9 @@ def cart_to_dict(cart, items):
     for item in items_dict:
         total += item["line_total"]
     return {
-        "id": cart[0],
-        "user_id": cart[1],
-        "status": cart[2],
+        "id": cart.id,
+        "user_id": cart.user_id,
+        "status": cart.status,
         "items": items_dict,
         "total": round(total, 2),
     }
@@ -106,27 +108,27 @@ def cart_to_dict(cart, items):
 
 def invoice_item_to_dict(item):
     return {
-        "product_id": item[0],
-        "product_name": item[4],
-        "quantity": item[1],
-        "unit_price": float(item[2]),
-        "line_total": float(item[3]),
+        "product_id": item.product_id,
+        "product_name": item.product_name,
+        "quantity": item.quantity,
+        "unit_price": float(item.unit_price),
+        "line_total": float(item.line_total),
     }
 
 
 def invoice_to_dict(invoice):
     return {
-        "invoice_number": invoice[1],
-        "user_id": invoice[2],
-        "cart_id": invoice[3],
-        "status": invoice[4],
-        "total": float(invoice[5]),
-        "created_at": invoice[6].isoformat(),
+        "invoice_number": invoice.invoice_number,
+        "user_id": invoice.user_id,
+        "cart_id": invoice.cart_id,
+        "status": invoice.status,
+        "total": float(invoice.total),
+        "created_at": invoice.created_at.isoformat(),
     }
 
 
 def full_invoice_to_dict(invoice):
-    invoice_id = invoice[0]
+    invoice_id = invoice.id
     result = invoice_to_dict(invoice)
 
     items = db_manager.get_invoice_items(invoice_id)
@@ -135,32 +137,35 @@ def full_invoice_to_dict(invoice):
     billing = db_manager.get_billing_address(invoice_id)
     if billing is not None:
         result["billing_address"] = {
-            "full_name": billing[2],
-            "phone": billing[3],
-            "province": billing[4],
-            "canton": billing[5],
-            "district": billing[6],
-            "exact_address": billing[7],
+            "full_name": billing.full_name,
+            "phone": billing.phone,
+            "province": billing.province,
+            "canton": billing.canton,
+            "district": billing.district,
+            "exact_address": billing.exact_address,
         }
 
     payment = db_manager.get_payment(invoice_id)
     if payment is not None:
         result["payment"] = {
-            "method": payment[2],
-            "sinpe_phone": payment[3],
-            "sinpe_reference": payment[4],
-            "amount": float(payment[5]),
+            "method": payment.method,
+            "sinpe_phone": payment.sinpe_phone,
+            "sinpe_reference": payment.sinpe_reference,
+            "amount": float(payment.amount),
         }
 
     return result
 
 
 def create_token(user):
-    return jwt_manager.encode({"id": user[0], "role": user[4]})
+    expiration = datetime.now(timezone.utc) + timedelta(hours=TOKEN_TTL_HOURS)
+    return jwt_manager.encode(
+        {"id": user.id, "role": user.role, "exp": expiration}
+    )
 
 
 def is_admin():
-    return g.current_user[4] == "admin"
+    return g.current_user.role == "admin"
 
 
 def parse_user_payload(data, require_password=True):
@@ -295,7 +300,7 @@ def register():
     result = db_manager.insert_user(
         payload["username"], payload["email"], payload["password"], "client"
     )
-    user = db_manager.get_user_by_id(result[0])
+    user = db_manager.get_user_by_id(result.id)
     return jsonify(token=create_token(user), user=user_to_dict(user)), 201
 
 
@@ -351,7 +356,7 @@ def create_user():
     result = db_manager.insert_user(
         payload["username"], payload["email"], payload["password"], payload["role"]
     )
-    user = db_manager.get_user_by_id(result[0])
+    user = db_manager.get_user_by_id(result.id)
     return jsonify(user_to_dict(user)), 201
 
 
@@ -394,7 +399,7 @@ def delete_user(user_id):
     if user is None:
         return jsonify(error="Not Found"), 404
 
-    if user[0] == g.current_user[0]:
+    if user.id == g.current_user.id:
         return jsonify(error="An admin cannot delete itself"), 400
 
     db_manager.deactivate_user(user_id)
@@ -456,8 +461,8 @@ def create_product():
         payload["stock"],
         payload["category"],
     )
-    product = db_manager.get_product_by_id(result[0])
-    invalidate_product_cache(product[0])
+    product = db_manager.get_product_by_id(result.id)
+    invalidate_product_cache(product.id)
     return jsonify(product_to_dict(product)), 201
 
 
@@ -491,7 +496,7 @@ def delete_product(product_id):
 def can_use_cart(cart):
     if is_admin():
         return True
-    return cart[1] == g.current_user[0]
+    return cart.user_id == g.current_user.id
 
 
 @app.route("/carts", methods=["GET"])
@@ -500,19 +505,19 @@ def list_carts():
     if is_admin():
         carts = db_manager.get_all_carts()
     else:
-        carts = db_manager.get_carts_by_user(g.current_user[0])
+        carts = db_manager.get_carts_by_user(g.current_user.id)
 
     result = []
     for cart in carts:
-        result.append(cart_to_dict(cart, db_manager.get_cart_items(cart[0])))
+        result.append(cart_to_dict(cart, db_manager.get_cart_items(cart.id)))
     return jsonify(result)
 
 
 @app.route("/carts", methods=["POST"])
 @require_auth()
 def create_cart():
-    result = db_manager.insert_cart(g.current_user[0])
-    cart = db_manager.get_cart_by_id(result[0])
+    result = db_manager.insert_cart(g.current_user.id)
+    cart = db_manager.get_cart_by_id(result.id)
     return jsonify(cart_to_dict(cart, [])), 201
 
 
@@ -539,7 +544,7 @@ def delete_cart(cart_id):
     if not can_use_cart(cart):
         return jsonify(error="Forbidden"), 403
 
-    if cart[2] != "open":
+    if cart.status != "open":
         return jsonify(error="Cart is already checked out"), 409
 
     db_manager.delete_cart(cart_id)
@@ -556,7 +561,7 @@ def add_cart_item(cart_id):
     if not can_use_cart(cart):
         return jsonify(error="Forbidden"), 403
 
-    if cart[2] != "open":
+    if cart.status != "open":
         return jsonify(error="Cart is already checked out"), 409
 
     data = request.get_json()
@@ -565,10 +570,10 @@ def add_cart_item(cart_id):
         return jsonify(error="Bad Request"), 400
 
     product = db_manager.get_product_by_id(data.get("product_id"))
-    if product is None or product[6] == False:
+    if product is None or product.is_active == False:
         return jsonify(error="Not Found"), 404
 
-    db_manager.add_cart_item(cart_id, product[0], quantity)
+    db_manager.add_cart_item(cart_id, product.id, quantity)
     return jsonify(cart_to_dict(cart, db_manager.get_cart_items(cart_id))), 201
 
 
@@ -582,7 +587,7 @@ def set_cart_item(cart_id, product_id):
     if not can_use_cart(cart):
         return jsonify(error="Forbidden"), 403
 
-    if cart[2] != "open":
+    if cart.status != "open":
         return jsonify(error="Cart is already checked out"), 409
 
     quantity = parse_quantity(request.get_json())
@@ -606,7 +611,7 @@ def delete_cart_item(cart_id, product_id):
     if not can_use_cart(cart):
         return jsonify(error="Forbidden"), 403
 
-    if cart[2] != "open":
+    if cart.status != "open":
         return jsonify(error="Cart is already checked out"), 409
 
     if db_manager.get_cart_item(cart_id, product_id) is None:
@@ -633,7 +638,7 @@ def checkout(cart_id):
     try:
         invoice_number = db_manager.create_sale(
             cart_id,
-            cart[1],
+            cart.user_id,
             payload["billing_address"],
             payload["payment"],
         )
@@ -654,8 +659,8 @@ def checkout(cart_id):
         ), 400
 
     invoice = db_manager.get_invoice_by_number(invoice_number)
-    for item in db_manager.get_invoice_items(invoice[0]):
-        invalidate_product_cache(item[0])
+    for item in db_manager.get_invoice_items(invoice.id):
+        invalidate_product_cache(item.product_id)
 
     return jsonify(full_invoice_to_dict(invoice)), 201
 
@@ -666,7 +671,7 @@ def list_invoices():
     if is_admin():
         invoices = db_manager.get_all_invoices()
     else:
-        invoices = db_manager.get_invoices_by_user(g.current_user[0])
+        invoices = db_manager.get_invoices_by_user(g.current_user.id)
 
     return jsonify([invoice_to_dict(invoice) for invoice in invoices])
 
@@ -689,7 +694,7 @@ def get_invoice(invoice_number):
             key, json.dumps(invoice_dict), time_to_live=INVOICE_CACHE_TTL
         )
 
-    if invoice_dict["user_id"] != g.current_user[0] and not is_admin():
+    if invoice_dict["user_id"] != g.current_user.id and not is_admin():
         return jsonify(error="Forbidden"), 403
 
     return jsonify(invoice_dict)
@@ -724,7 +729,7 @@ def update_invoice(invoice_number):
     if invoice is None:
         return jsonify(error="Not Found"), 404
 
-    db_manager.update_payment_reference(invoice[0], data.get("sinpe_reference"))
+    db_manager.update_payment_reference(invoice.id, data.get("sinpe_reference"))
     invalidate_invoice_cache(invoice_number)
     return jsonify(full_invoice_to_dict(invoice))
 
@@ -736,10 +741,10 @@ def delete_invoice(invoice_number):
     if invoice is None:
         return jsonify(error="Not Found"), 404
 
-    if invoice[4] != "refunded":
+    if invoice.status != "refunded":
         return jsonify(error="Only refunded invoices can be deleted"), 409
 
-    db_manager.delete_invoice(invoice[0])
+    db_manager.delete_invoice(invoice.id)
     invalidate_invoice_cache(invoice_number)
     return jsonify(message="Deleted")
 

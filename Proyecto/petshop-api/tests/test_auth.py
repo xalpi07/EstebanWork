@@ -118,3 +118,20 @@ def test_me_with_invalid_token():
     client = helpers.start()
     response = client.get("/me", headers=helpers.header("token-inventado"))
     assert response.status_code == 401
+
+
+def test_login_token_has_expiration():
+    client = helpers.start()
+    token = helpers.login(client, "maria", "client123")
+    data = helpers.decode_token(token)
+    assert data["exp"] is not None
+
+
+def test_me_with_expired_token():
+    client = helpers.start()
+    user = helpers.db_manager.get_user_by_username("maria")
+    response = client.get(
+        "/me", headers=helpers.header(helpers.expired_token(user.id))
+    )
+    assert response.status_code == 401
+    assert response.get_json()["error"] == "Unauthorized"
